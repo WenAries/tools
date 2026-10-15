@@ -2,8 +2,8 @@
   <div class="tool">
     <div class="tool__now">
       <span class="tool__now-label">{{ t('ui.now') }}</span>
-      <code class="tool__now-value">{{ nowSeconds }}</code>
-      <span class="tool__now-sub">{{ t('ui.seconds') }} · {{ nowMs }} ms</span>
+      <code class="tool__now-value">{{ nowSeconds ?? '—' }}</code>
+      <span class="tool__now-sub">{{ t('ui.seconds') }} · {{ nowMs ?? '—' }} ms</span>
       <button type="button" class="tool__btn tool__btn--ghost" @click="useNow">
         {{ t('ui.now') }}
       </button>
@@ -59,28 +59,59 @@
 <script setup lang="ts">
 const { t } = useI18n()
 
-const nowTick = ref(Date.now())
-let raf: ReturnType<typeof setInterval> | null = null
-onMounted(() => {
-  raf = setInterval(() => (nowTick.value = Date.now()), 1000)
-})
-onUnmounted(() => {
-  if (raf) clearInterval(raf)
-})
+/**
+ * 时间与时区相关状态一律在 onMounted 后填充。
+ * 本页是预渲染静态页：若在 setup 阶段读取 Date.now() 或浏览器时区，
+ * 构建产物会固化「构建时刻」的时间戳，且与客户端首帧不一致 → 触发水合不匹配。
+ * 因此服务端只渲染稳定的占位（—），客户端水合完成后再填入真实值。
+ */
+const BASE_TIMEZONES = [
+  'UTC',
+  'Etc/GMT',
+  'America/Los_Angeles',
+  'America/New_York',
+  'Europe/London',
+  'Europe/Berlin',
+  'Europe/Paris',
+  'Europe/Moscow',
+  'Asia/Shanghai',
+  'Asia/Hong_Kong',
+  'Asia/Taipei',
+  'Asia/Tokyo',
+  'Asia/Seoul',
+  'Asia/Singapore',
+  'Australia/Sydney',
+  'Pacific/Auckland',
+  'America/Sao_Paulo'
+]
 
-const nowSeconds = computed(() => Math.floor(nowTick.value / 1000))
-const nowMs = computed(() => nowTick.value % 1000)
-
-const timezones = computed(() => {
-  const local = Intl.DateTimeFormat().resolvedOptions().timeZone
-  const list = ['UTC', 'Etc/GMT', 'America/Los_Angeles', 'America/New_York', 'Europe/London', 'Europe/Berlin', 'Europe/Paris', 'Europe/Moscow', 'Asia/Shanghai', 'Asia/Hong_Kong', 'Asia/Taipei', 'Asia/Tokyo', 'Asia/Seoul', 'Asia/Singapore', 'Australia/Sydney', 'Pacific/Auckland', 'America/Sao_Paulo']
-  return Array.from(new Set([local, ...list]))
-})
-
-const tsInput = ref(String(Math.floor(Date.now() / 1000)))
+const timezones = ref<string[]>([...BASE_TIMEZONES])
+const nowTick = ref(0)
+const tsInput = ref('')
 const unit = ref<'s' | 'ms'>('s')
 const tz = ref('UTC')
 const dateInput = ref('')
+const error = ref('')
+
+let ticker: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  // 把访客本地时区排到最前，便于默认查看
+  const local = Intl.DateTimeFormat().resolvedOptions().timeZone
+  if (local && !timezones.value.includes(local)) timezones.value = [local, ...timezones.value]
+
+  nowTick.value = Date.now()
+  useNow()
+  ticker = setInterval(() => (nowTick.value = Date.now()), 1000)
+})
+
+onUnmounted(() => {
+  if (ticker) clearInterval(ticker)
+})
+
+/** 未水合完成前返回 null，模板渲染 —，避免 SSR/客户端文本不一致 */
+const nowSeconds = computed(() => (nowTick.value ? Math.floor(nowTick.value / 1000) : null))
+const nowMs = computed(() => (nowTick.value ? nowTick.value % 1000 : null))
 
 const timestamp = computed(() => {
   const n = Number(tsInput.value.replace(/[^\d-]/g, ''))
@@ -125,8 +156,9 @@ const rows = computed(() => {
 
 const relative = computed(() => {
   const d = date.value
-  if (!d) return ''
-  const diff = d.getTime() - Date.now()
+  if (!d || !nowTick.value) return ''
+  // 以响应式的 nowTick 为基准，随每秒 tick 自动刷新（也保证水合后行为一致）
+  const diff = d.getTime() - nowTick.value
   const abs = Math.abs(diff)
   const fmt = (n: number, unit: string) => `${n} ${unit}${n === 1 ? '' : 's'}`
   let text: string
@@ -136,8 +168,6 @@ const relative = computed(() => {
   else text = fmt(Math.round(abs / 86_400_000), 'd')
   return diff > 0 ? `${t('ui.relative')}: +${text}` : `${t('ui.relative')}: -${text} ${t('ui.ago')}`
 })
-
-const error = ref('')
 
 function useNow() {
   unit.value = 's'

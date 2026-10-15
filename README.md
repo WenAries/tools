@@ -13,11 +13,35 @@
 ```bash
 pnpm install     # 安装依赖（会自动执行 nuxt prepare）
 pnpm dev         # 本地开发，http://localhost:3000
-pnpm build       # 生产构建（含全站 396 页预渲染）
-pnpm preview     # 预览构建产物
+pnpm generate    # 生产构建 + 全站静态化（输出 dist/ ，396 个 HTML）
+pnpm preview     # 预览静态产物，http://localhost:3000
 ```
 
 Node 版本要求：**>= 20**。
+
+### ⚠️ 静态产物必须通过 HTTP 访问，不能双击 HTML
+
+`pnpm generate` 产出的是纯静态文件（`dist/`）。它是带客户端路由的单页应用，
+**必须由 HTTP 服务器托管**。直接双击 `dist/index.html` 用 `file://` 协议打开会必然失效：
+
+| 现象 | 原因 |
+| --- | --- |
+| 页面能显示，但所有按钮/下拉都没反应 | 资源路径是 `/_nuxt/xxx.js`，在 `file://` 下被解析为 `file:///C:/_nuxt/...`，全部加载失败，JS 一行都没执行 |
+| 点站内链接报 "无法访问文件 / ERR_FILE_NOT_FOUND" | 站内链接是 `/tool/json-formatter`，在 `file://` 下被解析为本地磁盘路径 `file:///C:/tool/json-formatter`，该文件不存在 |
+
+正确做法（任选其一）：
+
+```bash
+pnpm preview                                   # 内置零依赖静态服务器，默认 http://localhost:3000
+pnpm preview --port 8080                       # 指定端口
+pnpm preview --host 0.0.0.0 --port 8080        # 局域网/手机同网段访问
+```
+
+也可以交给任意静态服务器，把根目录指向 `dist/` 即可：
+`npx serve dist` · `python -m http.server -d dist 8000` · VS Code Live Server。
+
+> 部署到真实的静态托管（Cloudflare Pages / Netlify / Nginx）时同样天然满足这一条件，
+> 只要发布目录是 `dist/`（等价于 `.output/public/`）即可。
 
 ---
 
@@ -194,27 +218,37 @@ node scripts/verify-i18n.mjs
 
 ## 八、部署
 
-构建产物有两个形态：
+**推荐用 `pnpm generate`**，产出纯静态站点，可直接丢到任意静态托管：
 
-- `.output/public/` —— 396 个静态 HTML + 静态资源，可直接丢到任意静态托管
-- `.output/server/` —— Nitro Node 服务，`node .output/server/index.mjs` 启动
+| 产物 | 说明 |
+| --- | --- |
+| `dist/` | 纯静态站点（= `.output/public/`），396 个 HTML + 全部静态资源 |
+| `.output/public/` | 同上（`dist` 是它的软链接） |
 
 ### 静态托管（推荐，成本最低）
 
-Cloudflare Pages / Netlify / GitHub Pages 等：
+Cloudflare Pages / Netlify / GitHub Pages / 对象存储 CDN 等：
 
 ```
-构建命令：pnpm build
-发布目录：.output/public
+构建命令：pnpm generate
+发布目录：dist
 ```
+
+托管平台需满足一个条件：**目录请求能自动回落到该目录下的 `index.html`**
+（即 `/tool/json-formatter/` → `/tool/json-formatter/index.html`）。
+Cloudflare Pages、Netlify、Vercel、GitHub Pages、Nginx（`index index.html;`）默认都满足。
+产物中已包含 `404.html` 与 `200.html`，供平台做错误页与回退。
 
 ### Node 托管
 
-Vercel / Netlify Functions / 自有服务器：
+也可以先 `pnpm build` 得到 Nitro 服务端产物：
 
 ```
+构建命令：pnpm build
 启动命令：node .output/server/index.mjs
 ```
+
+> 本项目全站预渲染，静态托管与 Node 托管的内容完全一致，静态托管更省成本、TTFB 更低。
 
 ### 上线后必做
 
