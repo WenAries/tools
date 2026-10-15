@@ -1,0 +1,13 @@
+{
+  // Cloudflare Workers 静态资产部署配置（Workers Builds 读取）
+  // 本项目是纯前端 SSG：`pnpm generate` 产出 .output/public，无需任何服务端代码。
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tools",
+  "compatibility_date": "2025-07-15",
+  "assets": {
+    // nuxt generate 的静态产物目录
+    "directory": "./.output/public",
+    // 未命中路径时返回站点自带的 404.html（状态码 404）
+    "not_found_handling": "404-page"
+  }
+}

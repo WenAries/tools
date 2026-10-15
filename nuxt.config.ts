@@ -136,7 +136,11 @@ export default defineNuxtConfig({
     prerender: {
       crawlLinks: true,
       failOnError: false,
-      routes: PRERENDER_ROUTES
+      routes: PRERENDER_ROUTES,
+      // 输出 /tool/xxx.html 而不是 /tool/xxx/index.html：
+      // 与 canonical / sitemap 的无尾斜杠 URL 保持一致，
+      // 避免 Cloudflare 静态资产在 /tool/xxx 与 /tool/xxx/ 之间做 308 重定向。
+      autoSubfolderIndex: false
     }
   },
 

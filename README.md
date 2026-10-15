@@ -222,22 +222,37 @@ node scripts/verify-i18n.mjs
 
 | 产物 | 说明 |
 | --- | --- |
-| `dist/` | 纯静态站点（= `.output/public/`），396 个 HTML + 全部静态资源 |
-| `.output/public/` | 同上（`dist` 是它的软链接） |
+| `.output/public/` | 纯静态站点，396 个平铺 HTML（`/tool/xxx.html`）+ 全部静态资源 |
 
-### 静态托管（推荐，成本最低）
+### Cloudflare Workers（当前使用，Workers Builds）
+
+仓库已内置 `wrangler.jsonc`（Workers 静态资产模式，指向 `.output/public`），三个命令按默认填即可：
+
+| 字段 | 填写 | 说明 |
+| --- | --- | --- |
+| 构建命令 | `pnpm run generate` | 产出纯静态 `.output/public`，不要用 `pnpm build`（会多构建用不到的 SSR server bundle） |
+| 部署命令 | `npx wrangler deploy` | 读取 wrangler.jsonc 上传静态资产 |
+| 预览命令 | `npx wrangler preview`（默认） | 非生产分支的 Preview 构建 |
+
+注意：
+
+- 预渲染产物是 `/tool/xxx.html` 平铺形式（`autoSubfolderIndex: false`），与 canonical/sitemap 的无尾斜杠 URL 一致，Cloudflare 静态资产直接命中，无 308 重定向。
+- **务必在 Cloudflare 构建变量里设置 `NUXT_PUBLIC_SITE_URL` 为正式域名**（默认值 `https://www.freetools.fun` 会被写死进 396 个页面的 canonical/sitemap/JSON-LD；SSG 下改运行时变量无效，必须重新构建）。
+- 广告开关默认关闭（`NUXT_PUBLIC_ADS_ENABLED=false`），流量达标后在构建变量开启并重新构建，详见「广告配置」一节。
+- 上线后建议给 Worker 绑定自定义域（Workers → Settings → Domains & Routes），`*.workers.dev` 子域不利于收录。
+
+### 其他静态托管（成本最低）
 
 Cloudflare Pages / Netlify / GitHub Pages / 对象存储 CDN 等：
 
 ```
 构建命令：pnpm generate
-发布目录：dist
+发布目录：.output/public
 ```
 
-托管平台需满足一个条件：**目录请求能自动回落到该目录下的 `index.html`**
-（即 `/tool/json-formatter/` → `/tool/json-formatter/index.html`）。
-Cloudflare Pages、Netlify、Vercel、GitHub Pages、Nginx（`index index.html;`）默认都满足。
-产物中已包含 `404.html` 与 `200.html`，供平台做错误页与回退。
+托管平台需满足一个条件：**无扩展名路径能自动回落到同名 `.html` 或目录 `index.html`**
+（`/tool/json-formatter` → `/tool/json-formatter.html` 或 `/tool/json-formatter/index.html`）。
+主流平台默认都满足。产物中已包含 `404.html` 与 `200.html`，供平台做错误页与回退。
 
 ### Node 托管
 
