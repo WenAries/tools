@@ -119,13 +119,12 @@ export default defineNuxtConfig({
     strategy: 'prefix_except_default',
     baseUrl: SITE_URL,
     langDir: 'locales',
-    detectBrowserLanguage: {
-      useCookie: true,
-      cookieKey: 'i18n_redirected',
-      redirectOn: 'root',
-      alwaysRedirect: false,
-      fallbackLocale: DEFAULT_LOCALE
-    },
+    // 关闭浏览器语言自动检测：
+    // 1) SSG 下没有服务端重定向，客户端检测会在水合时切换 locale，导致首页
+    //    "Hydration completed but contains mismatches" + 首屏语言闪变；
+    // 2) JS 语言重定向对 Googlebot 抓取不友好，多语言分发已由 hreflang + sitemap 承担；
+    // 3) 用户语言偏好改由语言切换器写入 cookie 维护。
+    detectBrowserLanguage: false,
     locales: LOCALES as unknown as any[],
     vueI18n: './i18n.config.ts',
     // 保持严格模式（strictMessage 默认 true）：语言包若混入真实 HTML 会在构建期直接报错，

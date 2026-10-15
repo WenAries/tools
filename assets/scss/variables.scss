@@ -85,6 +85,12 @@ $breakpoint-desktop: 1280px;
 $header-height: 60px;
 $sidebar-width: 260px;
 $content-max: 1240px;
+// 页壳最大宽度 = 侧边栏 + 内容区。header 内层与 layout body 共用，
+// 保证两者左边缘严格对齐，且整体在视口中居中。
+$shell-max: $sidebar-width + $content-max;
+// 右侧广告栏宽度。恢复广告位时把 .layout__body 的列模板加上该列、
+// 并让 .layout__rail 恢复 sticky 定位即可。
+$rail-width: 300px;
 
 // 动效
 $ease-out: cubic-bezier(0.16, 1, 0.3, 1);

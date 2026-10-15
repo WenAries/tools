@@ -90,7 +90,7 @@ function goSearch(value: string) {
   @include flex-between;
   gap: $spacing-md;
   height: $header-height;
-  max-width: 1440px;
+  max-width: $shell-max;
   margin: 0 auto;
   padding: 0 $spacing-lg;
 
@@ -100,9 +100,13 @@ function goSearch(value: string) {
   }
 }
 
+// 与侧边栏抽屉的断点严格保持一致：侧边栏一旦收起（≤1023px）才出现汉堡按钮，
+// 桌面端侧边栏常驻时不显示，避免页面上出现过早、无效的展开入口。
 .app-header__menu {
-  display: none;
   @include flex-center;
+  // 注意：display: none 必须写在 flex-center（含 display: flex）之后，
+  // 否则会被覆盖，导致按钮在桌面端也常驻显示。
+  display: none;
   width: 36px;
   height: 36px;
   border: 1px solid $border-color;
@@ -117,7 +121,7 @@ function goSearch(value: string) {
     height: 18px;
   }
 
-  @include mobile {
+  @include mobile-and-tablet {
     display: flex;
   }
 }

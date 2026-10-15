@@ -70,13 +70,13 @@ const popular = computed(() => featured.value.slice(0, 8))
 }
 
 .app-footer__ad {
-  max-width: $content-max;
+  max-width: $shell-max;
   margin: $spacing-lg auto 0;
   padding: 0 $spacing-md;
 }
 
 .app-footer__inner {
-  max-width: $content-max;
+  max-width: $shell-max;
   margin: 0 auto;
   padding: $spacing-xl $spacing-md;
   display: grid;
