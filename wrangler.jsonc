@@ -1,7 +1,9 @@
 {
   // Cloudflare Workers 静态资产部署配置（Workers Builds 读取）
   // 本项目是纯前端 SSG：`pnpm generate` 产出 .output/public，无需任何服务端代码。
-  "$schema": "node_modules/wrangler/config-schema.json",
+  // 注意：nuxt.config.ts 中已锁定 nitro.preset = 'static'，
+  // 否则 Cloudflare 构建环境的 WORKERS_CI=1 会让 Nitro 切到 SSR preset，
+  // 生成 .wrangler/deploy/config.json 并覆盖本文件，导致 deploy 失败。
   "name": "tools",
   "compatibility_date": "2025-07-15",
   "assets": {

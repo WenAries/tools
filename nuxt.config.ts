@@ -133,6 +133,13 @@ export default defineNuxtConfig({
   },
 
   nitro: {
+    // 必须显式锁定为 static：
+    // Cloudflare Workers Builds 会注入 WORKERS_CI=1，Nitro 的环境自动探测会据此
+    // 切换到 cloudflare-module（SSR）preset，产物变成 .output/server/index.mjs
+    // 并额外生成 .wrangler/deploy/config.json —— wrangler 读到它就会"重定向"配置、
+    // 忽略仓库根目录的 wrangler.jsonc（静态资产模式），报 "entry-point index.mjs was not found"。
+    // 锁定 static 后，无论构建环境如何，产物始终是纯静态 .output/public。
+    preset: 'static',
     prerender: {
       crawlLinks: true,
       failOnError: false,

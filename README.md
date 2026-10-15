@@ -236,10 +236,22 @@ node scripts/verify-i18n.mjs
 
 注意：
 
+- **不要移除 `nuxt.config.ts` 里的 `nitro.preset: 'static'`**。Cloudflare 构建环境会注入 `WORKERS_CI=1`，Nitro 的环境探测会据此把 preset 自动切换成 `cloudflare-module`（SSR），产物变成 `.output/server/index.mjs` 并生成 `.wrangler/deploy/config.json`；wrangler 读到后者会「重定向」配置、忽略根目录的 `wrangler.jsonc`，报 `The entry-point file at "index.mjs" was not found` 而部署失败。锁定 `static` 后 `pnpm build` / `pnpm generate` 两种命令都只产出 `.output/public`。
 - 预渲染产物是 `/tool/xxx.html` 平铺形式（`autoSubfolderIndex: false`），与 canonical/sitemap 的无尾斜杠 URL 一致，Cloudflare 静态资产直接命中，无 308 重定向。
 - **务必在 Cloudflare 构建变量里设置 `NUXT_PUBLIC_SITE_URL` 为正式域名**（默认值 `https://www.freetools.fun` 会被写死进 396 个页面的 canonical/sitemap/JSON-LD；SSG 下改运行时变量无效，必须重新构建）。
 - 广告开关默认关闭（`NUXT_PUBLIC_ADS_ENABLED=false`），流量达标后在构建变量开启并重新构建，详见「广告配置」一节。
 - 上线后建议给 Worker 绑定自定义域（Workers → Settings → Domains & Routes），`*.workers.dev` 子域不利于收录。
+
+<details>
+<summary>部署报错排查</summary>
+
+| 日志 | 含义与处理 |
+| --- | --- |
+| `Using redirected Wrangler configuration` → `entry-point ... index.mjs was not found` | Nitro 未锁定 static，产出了 SSR worker 配置并覆盖 `wrangler.jsonc`。检查 `nitro.preset` 是否仍为 `'static'`。 |
+| `Configuration file not found` | 仓库根目录缺少 `wrangler.jsonc`。 |
+| 页面 404 但构建成功 | 检查 `assets.directory` 是否为 `./.output/public`，以及构建命令是否真的产出了该目录。 |
+
+</details>
 
 ### 其他静态托管（成本最低）
 
